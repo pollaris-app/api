@@ -1,7 +1,8 @@
 import { Elysia } from "elysia";
+import { quizzesRoutes } from "./routes/quizzes";
+import { pollsRoutes } from "./routes/polls";
 
-const app = new Elysia().get("/", () => "Hello Elysia").listen(3000);
-
-console.log(
-  `🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-);
+const app = new Elysia({ prefix: "/api/v1" })
+  .use(quizzesRoutes)
+  .use(pollsRoutes)
+  .listen(3000);
