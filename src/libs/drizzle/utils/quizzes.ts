@@ -9,7 +9,7 @@ export const getAllQuizzes = async (db: Database) => {
   const data = await db.select().from(quizzes);
 
   if (data.length === 0) {
-    throw new CustomError(404, "No quizzes found");
+    throw new CustomError(404, "Quizzes not found");
   }
 
   return {
