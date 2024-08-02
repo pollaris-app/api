@@ -1,12 +1,34 @@
-import { eq } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { Database } from "../../../types";
-import { quizzes } from "../schemas";
+import { quizzes, QuizzesSelect } from "../schemas";
 import { CustomError } from "../../utils/error";
-import { MySqlDelete } from "drizzle-orm/mysql-core";
-import { RowDataPacket } from "mysql2";
 
-export const getAllQuizzes = async (db: Database) => {
-  const data = await db.select().from(quizzes);
+interface AllQuizzesQueryParams {
+  sort_by: keyof QuizzesSelect;
+  order_by: "asc" | "desc";
+  limit: number;
+  offset: number;
+}
+
+export const getAllQuizzes = async (
+  db: Database,
+  { sort_by, order_by, offset, limit }: AllQuizzesQueryParams
+) => {
+  const sortAndOrder = () => {
+    switch (order_by) {
+      case "asc":
+        return asc(quizzes[sort_by]);
+      case "desc":
+        return desc(quizzes[sort_by]);
+    }
+  };
+
+  const data = await db
+    .select()
+    .from(quizzes)
+    .orderBy(sortAndOrder())
+    .limit(limit)
+    .offset(offset);
 
   if (data.length === 0) {
     throw new CustomError(404, "Quizzes not found");

@@ -27,15 +27,41 @@ export const quizzesRoutes = new Elysia({ prefix: "/quizzes" })
       }),
     }
   )
-  .get("/", async () => {
-    try {
-      const data = await getAllQuizzes(dbPool);
+  .get(
+    "/",
+    async ({ query: { sort_by, order_by, limit, offset } }) => {
+      try {
+        const data = await getAllQuizzes(dbPool, {
+          sort_by: sort_by ?? "id",
+          order_by: order_by ?? "asc",
+          limit: limit ?? 20,
+          offset: offset ?? 0,
+        });
 
-      return data;
-    } catch (error) {
-      if (error instanceof Error || error instanceof CustomError) {
-        handleError(error);
+        return data;
+      } catch (error) {
+        if (error instanceof Error || error instanceof CustomError) {
+          handleError(error);
+        }
       }
+    },
+    {
+      query: t.Object({
+        sort_by: t.Optional(
+          t.Enum({
+            id: "id",
+            title: "title",
+          })
+        ),
+        order_by: t.Optional(
+          t.Enum({
+            asc: "asc",
+            desc: "desc",
+          })
+        ),
+        limit: t.Optional(t.Number()),
+        offset: t.Optional(t.Number()),
+      }),
     }
-  })
+  )
   .use(quizzesSingleRoutes);
