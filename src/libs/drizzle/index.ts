@@ -3,8 +3,8 @@ import mysql from "mysql2/promise";
 
 export const dbData: mysql.ConnectionOptions = {
   host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  database: process.env.DB_NAME,
+  user: process.env.DB_USERNAME,
+  database: process.env.DB_DATABASE,
   password: process.env.DB_PASSWORD,
   port: Number(process.env.DB_PORT),
   ssl: {

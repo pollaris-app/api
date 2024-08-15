@@ -1,4 +1,5 @@
 import { Elysia, t } from "elysia";
+import { parseQuery } from "elysia/dist/fast-querystring";
 import {
   createSingleQuiz,
   getAllQuizzes,
@@ -29,13 +30,14 @@ export const quizzesRoutes = new Elysia({ prefix: "/quizzes" })
   )
   .get(
     "/",
-    async ({ query: { sort_by, order_by, limit, offset } }) => {
+    async ({ query: { sort_by, order_by, limit, offset, filters } }) => {
       try {
         const data = await getAllQuizzes(dbPool, {
           sort_by: sort_by ?? "id",
           order_by: order_by ?? "asc",
           limit: limit ?? 20,
           offset: offset ?? 0,
+          filters: filters ?? [],
         });
 
         return data;
@@ -61,6 +63,7 @@ export const quizzesRoutes = new Elysia({ prefix: "/quizzes" })
         ),
         limit: t.Optional(t.Number()),
         offset: t.Optional(t.Number()),
+        filters: t.Optional(t.Array(t.String())),
       }),
     }
   )

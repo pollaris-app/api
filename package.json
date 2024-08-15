@@ -16,8 +16,10 @@
     "mysql2": "^3.11.0"
   },
   "devDependencies": {
+    "@types/qs": "^6.9.15",
     "bun-types": "latest",
-    "drizzle-kit": "^0.23.1"
+    "drizzle-kit": "^0.23.1",
+    "qs": "^6.13.0"
   },
   "module": "src/index.js"
 }
