@@ -1,12 +1,11 @@
-import { asc, desc, eq, SQL, sql } from "drizzle-orm";
+import { eq, SQL, sql } from "drizzle-orm";
 import { Database } from "../../../types";
-import { quizzes, QuizzesInsert, QuizzesSelect } from "../schemas";
+import { quizzes, QuizzesSelect } from "../schemas";
 import { CustomError } from "../../utils/error";
-import qs, { parse } from "qs";
 import {
   handleFilter,
-  isStringField,
-  Operator,
+  type Operator,
+  parseFilterString,
   sortAndOrder,
 } from "../../utils/filters";
 
@@ -17,24 +16,6 @@ interface AllQuizzesQueryParams {
   offset: number;
   filters: string[];
 }
-
-const parseFilterString = (filter: string) => {
-  let parts = filter.split(":");
-
-  if (parts.length === 0 || parts.length > 3) {
-    throw new CustomError(400, "Invalid filter string");
-  }
-
-  let field = parts[0];
-  let operator = parts[1];
-  let value = parts[2];
-
-  return {
-    field,
-    operator,
-    value,
-  };
-};
 
 // TODO: Try catch block for error handling
 export const getAllQuizzes = async (
@@ -66,8 +47,6 @@ export const getAllQuizzes = async (
       sqlChunks.push(sql`AND`);
     }
   }
-
-  sqlChunks.push();
 
   const data = await db
     .select()

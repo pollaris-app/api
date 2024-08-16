@@ -1,5 +1,4 @@
 import { Elysia, t } from "elysia";
-import { parseQuery } from "elysia/dist/fast-querystring";
 import {
   createSingleQuiz,
   getAllQuizzes,
