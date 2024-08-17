@@ -5,8 +5,11 @@ import { CustomError } from "../../utils/error";
 import {
   handleFilter,
   type Operator,
+  operators,
   parseFilterString,
+  parseFilterStringArray,
   sortAndOrder,
+  validateOperator,
 } from "../../utils/filters";
 
 interface AllQuizzesQueryParams {
@@ -22,30 +25,10 @@ export const getAllQuizzes = async (
   db: Database,
   { sort_by, order_by, offset, limit, filters }: AllQuizzesQueryParams
 ) => {
-  const sqlChunks: SQL[] = [];
+  const sqlChunks = parseFilterStringArray(filters, quizzes);
 
-  for (let [index, filter] of filters.entries()) {
-    const { field, operator, value } = parseFilterString(filter);
-
-    if (!(field in quizzes)) {
-      return new CustomError(400, "Invalid filter field");
-    }
-
-    if (!["eq"].includes(operator)) {
-      return new CustomError(400, "Invalid filter operator");
-    }
-
-    sqlChunks.push(
-      handleFilter(quizzes, {
-        field: field as keyof QuizzesSelect,
-        operator: operator as Operator,
-        value,
-      })
-    );
-
-    if (index < filters.length - 1) {
-      sqlChunks.push(sql`AND`);
-    }
+  if (sqlChunks instanceof CustomError) {
+    throw sqlChunks;
   }
 
   const data = await db

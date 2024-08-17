@@ -1,9 +1,19 @@
-import { asc, desc, sql } from "drizzle-orm";
+import { asc, desc, eq, ne, SQL, sql } from "drizzle-orm";
 import { MySqlTableWithColumns } from "drizzle-orm/mysql-core";
 import { CustomError } from "./error";
 
-export type Operator = "eq";
+export const operators = ["eq", "ne"] as const;
+
+export type Operator = (typeof operators)[number];
 export type Schema = MySqlTableWithColumns<any>;
+
+export const validateOperator = (operator: string): Operator | CustomError => {
+  if (!operators.includes(operator as Operator)) {
+    return new CustomError(400, "Invalid operator");
+  }
+
+  return operator as Operator;
+};
 
 export const sortAndOrder = (
   schema: Schema,
@@ -36,9 +46,9 @@ export const handleFilter = (
 ) => {
   switch (operator) {
     case "eq":
-      return sql`${schema[field]} = ${
-        isStringField(schema, field) ? sql`${value}` : sql`${value}`
-      }`;
+      return sql`${eq(schema[field], value)}`;
+    case "ne":
+      return sql`${ne(schema[field], value)}`;
   }
 };
 
@@ -58,4 +68,36 @@ export const parseFilterString = (filter: string) => {
     operator,
     value,
   };
+};
+
+export const parseFilterStringArray = (filters: string[], schema: Schema) => {
+  const sqlChunks: SQL[] = [];
+
+  for (let [index, filter] of filters.entries()) {
+    const { field, operator, value } = parseFilterString(filter);
+
+    if (!(field in schema)) {
+      return new CustomError(400, "Invalid filter field");
+    }
+
+    const validOperator = validateOperator(operator);
+
+    if (validOperator instanceof CustomError) {
+      return validOperator;
+    }
+
+    sqlChunks.push(
+      handleFilter(schema, {
+        field,
+        operator: operator as Operator,
+        value,
+      })
+    );
+
+    if (index < filters.length - 1) {
+      sqlChunks.push(sql`AND`);
+    }
+  }
+
+  return sqlChunks;
 };
