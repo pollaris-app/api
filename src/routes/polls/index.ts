@@ -7,13 +7,14 @@ import { pollsSingleRoutes } from "./single";
 export const pollsRoutes = new Elysia({ prefix: "/polls" })
   .get(
     "/",
-    async ({ query: { sort_by, order_by, limit, offset } }) => {
+    async ({ query: { sort_by, order_by, limit, offset, filters } }) => {
       try {
         const data = await getAllPolls(dbPool, {
           sort_by: sort_by ?? "id",
           order_by: order_by ?? "asc",
           limit: limit ?? 20,
           offset: offset ?? 0,
+          filters: filters ?? [],
         });
 
         return data;
@@ -39,6 +40,7 @@ export const pollsRoutes = new Elysia({ prefix: "/polls" })
         ),
         limit: t.Optional(t.Number()),
         offset: t.Optional(t.Number()),
+        filters: t.Optional(t.Array(t.String())),
       }),
     }
   )

@@ -1,34 +1,34 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { asc, desc, eq, sql } from "drizzle-orm";
 import { Database } from "../../../types";
 import { CustomError } from "../../utils/error";
 import { polls, type PollsSelect, type PollsInsert } from "../schemas";
+import { parseFilterStringArray, sortAndOrder } from "../../utils/filters";
 
 interface AllPollsQueryParams {
   sort_by: keyof PollsSelect;
   order_by: "asc" | "desc";
   limit: number;
   offset: number;
+  filters: string[];
 }
 
 export const getAllPolls = async (
   db: Database,
-  { sort_by, order_by, offset, limit }: AllPollsQueryParams
+  { sort_by, order_by, offset, limit, filters }: AllPollsQueryParams
 ) => {
-  const sortAndOrder = () => {
-    switch (order_by) {
-      case "asc":
-        return asc(polls[sort_by]);
-      case "desc":
-        return desc(polls[sort_by]);
-    }
-  };
+  const sqlChunks = parseFilterStringArray(filters, polls);
+
+  if (sqlChunks instanceof CustomError) {
+    throw sqlChunks;
+  }
 
   const data = await db
     .select()
     .from(polls)
-    .orderBy(sortAndOrder())
+    .orderBy(sortAndOrder(polls, sort_by, order_by))
     .limit(limit)
-    .offset(offset);
+    .offset(offset)
+    .where(filters.length > 0 ? sql.join(sqlChunks) : undefined);
 
   if (data.length === 0) {
     throw new CustomError(404, "Polls not found");
