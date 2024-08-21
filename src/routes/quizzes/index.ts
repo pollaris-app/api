@@ -8,25 +8,7 @@ import { quizzesSingleRoutes } from "./single";
 import { CustomError, handleError } from "../../libs/utils/error";
 
 export const quizzesRoutes = new Elysia({ prefix: "/quizzes" })
-  .post(
-    "/",
-    ({ body: { title } }) => {
-      try {
-        const data = createSingleQuiz(dbPool, title);
 
-        return data;
-      } catch (error) {
-        if (error instanceof Error || error instanceof CustomError) {
-          handleError(error);
-        }
-      }
-    },
-    {
-      body: t.Object({
-        title: t.String(),
-      }),
-    }
-  )
   .get(
     "/",
     async ({ query: { sort_by, order_by, limit, offset, filters } }) => {

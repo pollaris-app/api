@@ -44,23 +44,5 @@ export const pollsRoutes = new Elysia({ prefix: "/polls" })
       }),
     }
   )
-  .post(
-    "/",
-    async ({ body: { title } }) => {
-      try {
-        const data = createSinglePoll(dbPool, String(title));
 
-        return data;
-      } catch (error) {
-        if (error instanceof Error || error instanceof CustomError) {
-          handleError(error);
-        }
-      }
-    },
-    {
-      body: t.Object({
-        title: t.String(),
-      }),
-    }
-  )
   .use(pollsSingleRoutes);
