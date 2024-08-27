@@ -16,3 +16,23 @@ export const quizzes = mysqlTable("quizzes", {
 
 export type QuizzesInsert = typeof quizzes.$inferInsert;
 export type QuizzesSelect = typeof quizzes.$inferSelect;
+
+export const users = mysqlTable("users", {
+  id: int("id").primaryKey().autoincrement(),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+});
+
+export type UsersInsert = typeof users.$inferInsert;
+export type UsersSelect = typeof users.$inferSelect;
+
+export const accounts = mysqlTable("accounts", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id")
+    .references(() => users.id)
+    .notNull(),
+  username: text("username").notNull(),
+});
+
+export type AccountsInsert = typeof accounts.$inferInsert;
+export type AccountsSelect = typeof accounts.$inferSelect;
