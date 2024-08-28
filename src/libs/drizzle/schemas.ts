@@ -1,4 +1,4 @@
-import { int, mysqlTable, text } from "drizzle-orm/mysql-core";
+import { boolean, date, int, mysqlTable, text } from "drizzle-orm/mysql-core";
 import { relations, type InferSelectModel } from "drizzle-orm";
 
 export const polls = mysqlTable("polls", {
@@ -32,7 +32,33 @@ export const accounts = mysqlTable("accounts", {
     .references(() => users.id)
     .notNull(),
   username: text("username").notNull(),
+  email_verified: boolean("email_verified").notNull(),
 });
 
 export type AccountsInsert = typeof accounts.$inferInsert;
 export type AccountsSelect = typeof accounts.$inferSelect;
+
+export const emailVerifications = mysqlTable("email_verifications", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id")
+    .references(() => users.id)
+    .notNull(),
+  token: text("token").notNull(),
+  code: text("code").notNull(),
+  expiresAt: date("expires_at").notNull(),
+});
+
+export type EmailVerificationsInsert = typeof emailVerifications.$inferInsert;
+export type EmailVerificationsSelect = typeof emailVerifications.$inferSelect;
+
+export const passwordResets = mysqlTable("password_resets", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id")
+    .references(() => users.id)
+    .notNull(),
+  token: text("token").notNull(),
+  expiresAt: date("expires_at").notNull(),
+});
+
+export type PasswordResetsInsert = typeof passwordResets.$inferInsert;
+export type PasswordResetsSelect = typeof passwordResets.$inferSelect;
