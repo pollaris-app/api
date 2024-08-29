@@ -6,7 +6,6 @@ import {
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
 import { api } from "../..";
-import { error } from "elysia";
 
 export const usersRoutes = new Elysia({ prefix: "/users" })
   .error({
@@ -15,7 +14,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
   .onError(({ code, error }) => {
     switch (code) {
       case "CustomError":
-        return error.message;
+        return error;
     }
   })
   .get(
@@ -27,7 +26,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         return data;
       } catch (error) {
         if (error instanceof CustomError) {
-          throw handleError(error);
+          return handleError(error);
         }
       }
     },
@@ -41,21 +40,22 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       }),
     }
   )
+  .onError(({ code, error }) => {
+    switch (code) {
+      case "CustomError":
+        return error.message;
+    }
+  })
   .post(
     "/",
     async ({ body: { email, password } }) => {
       try {
-        const userExists = await api.v1.users({ email }).get();
+        const { error } = await api.v1.users({ email }).get();
 
-        console.log(userExists);
-
-        if (userExists.status !== 200) {
-          return new CustomError(
-            userExists.error?.status as number,
-            String(
-              (userExists.error?.value as { name: string; message: string })
-                ?.message
-            )
+        if (error) {
+          throw new CustomError(
+            Number(error.status),
+            String(error.value.message)
           );
         }
 
@@ -68,9 +68,9 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         const data = createSingleUser(dbPool, email, passwordHash);
 
         return data;
-      } catch (err) {
-        if (error instanceof Error || error instanceof CustomError) {
-          handleError(error);
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return handleError(error);
         }
       }
     },
