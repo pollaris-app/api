@@ -21,6 +21,7 @@ export const users = mysqlTable("users", {
   id: int("id").primaryKey().autoincrement(),
   email: text("email").notNull(),
   passwordHash: text("password_hash").notNull(),
+  email_verified: boolean("email_verified").notNull().default(false),
 });
 
 export type UsersInsert = typeof users.$inferInsert;
@@ -32,7 +33,7 @@ export const accounts = mysqlTable("accounts", {
     .references(() => users.id)
     .notNull(),
   username: text("username").notNull(),
-  email_verified: boolean("email_verified").notNull(),
+  avatar: text("avatar").notNull(),
 });
 
 export type AccountsInsert = typeof accounts.$inferInsert;
