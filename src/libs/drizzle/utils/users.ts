@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { Database } from "../../../types";
 import { CustomError, handleError } from "../../utils/error";
 import { users } from "../schemas";
+import { Resend } from "resend";
 
 export const checkUserExists = async (db: Database, email: string) => {
   try {
@@ -37,6 +38,27 @@ export const createSingleUser = async (
   return {
     name: "Success",
     message: "User created successfully",
+    data,
+  };
+};
+
+export const sendEmailVerificationEmail = async (email: string) => {
+  const resend = new Resend(Bun.env.RESEND_API_KEY);
+
+  const { data, error } = await resend.emails.send({
+    from: `Acme <onboarding@${Bun.env.RESEND_DOMAIN}>`,
+    to: [email],
+    subject: "Quizzly - Account Verification",
+    html: `<p>Verify</p>`,
+  });
+
+  if (error) {
+    throw new CustomError(500, error.message);
+  }
+
+  return {
+    name: "Success",
+    message: "Verification email sent",
     data,
   };
 };

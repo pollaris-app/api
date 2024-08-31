@@ -3,6 +3,7 @@ import { CustomError, handleError } from "../../libs/utils/error";
 import {
   checkUserExists,
   createSingleUser,
+  sendEmailVerificationEmail,
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
 import { api } from "../..";
@@ -66,6 +67,8 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
         });
 
         const data = createSingleUser(dbPool, email, passwordHash);
+
+        await sendEmailVerificationEmail(email);
 
         return data;
       } catch (error) {
