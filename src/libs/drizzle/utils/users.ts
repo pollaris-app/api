@@ -32,7 +32,7 @@ export const createSingleUser = async (
   const data = await db.insert(users).values({ email, passwordHash });
 
   if (data[0].affectedRows === 0) {
-    return new CustomError(500, "Failed to create user");
+    throw new CustomError(500, "Failed to create user");
   }
 
   return {
@@ -42,14 +42,21 @@ export const createSingleUser = async (
   };
 };
 
-export const sendEmailVerificationEmail = async (email: string) => {
+export const sendEmailVerificationEmail = async (
+  email: string,
+  token: string,
+  code: string
+) => {
   const resend = new Resend(Bun.env.RESEND_API_KEY);
 
   const { data, error } = await resend.emails.send({
     from: `Acme <onboarding@${Bun.env.RESEND_DOMAIN}>`,
     to: [email],
     subject: "Quizzly - Account Verification",
-    html: `<p>Verify</p>`,
+    html: `
+      <p>${code}</p>
+      <a href="http://${Bun.env.HOST}/auth/email-verification/${token}">Verify</a>
+    `,
   });
 
   if (error) {
