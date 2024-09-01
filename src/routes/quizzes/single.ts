@@ -16,9 +16,9 @@ const validators = {
 export const quizzesSingleRoutes = new Elysia()
   .post(
     "/",
-    ({ body: { title } }) => {
+    async ({ body: { title } }) => {
       try {
-        const data = createSingleQuiz(dbPool, title);
+        const data = await createSingleQuiz(dbPool, title);
 
         return data;
       } catch (error) {
@@ -35,9 +35,9 @@ export const quizzesSingleRoutes = new Elysia()
   )
   .get(
     "/:id",
-    ({ params: { id } }) => {
+    async ({ params: { id } }) => {
       try {
-        const data = getSingleQuiz(dbPool, Number(id));
+        const data = await getSingleQuiz(dbPool, Number(id));
 
         return data;
       } catch (error) {
@@ -50,9 +50,9 @@ export const quizzesSingleRoutes = new Elysia()
   )
   .delete(
     "/:id",
-    ({ params: { id } }) => {
+    async ({ params: { id } }) => {
       try {
-        const data = deleteSingleQuiz(dbPool, Number(id));
+        const data = await deleteSingleQuiz(dbPool, Number(id));
 
         return data;
       } catch (error) {
