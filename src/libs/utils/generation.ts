@@ -9,3 +9,13 @@ export const generateVerificationToken = () => {
 
   return hasher.digest("hex");
 };
+
+export const generatePasswordHash = async (password: string) => {
+  const hash = await Bun.password.hash(password, {
+    algorithm: "argon2id",
+    memoryCost: 2 ** 16,
+    timeCost: 3,
+  });
+
+  return hash;
+};
