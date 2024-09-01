@@ -3,10 +3,8 @@ import { CustomError, handleError } from "../../libs/utils/error";
 import {
   checkUserExists,
   createSingleUser,
-  sendEmailVerificationEmail,
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
-import { api } from "../..";
 
 export const usersRoutes = new Elysia({ prefix: "/users" })
   .error({
@@ -44,31 +42,14 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
   .onError(({ code, error }) => {
     switch (code) {
       case "CustomError":
-        return error.message;
+        return error;
     }
   })
   .post(
     "/",
-    async ({ body: { email, password } }) => {
+    async ({ body: { email, passwordHash } }) => {
       try {
-        const { error } = await api.v1.users({ email }).get();
-
-        if (error) {
-          throw new CustomError(
-            Number(error.status),
-            String(error.value.message)
-          );
-        }
-
-        const passwordHash = await Bun.password.hash(password, {
-          algorithm: "argon2id",
-          memoryCost: 2 ** 16,
-          timeCost: 3,
-        });
-
-        const data = createSingleUser(dbPool, email, passwordHash);
-
-        await sendEmailVerificationEmail(email);
+        const data = await createSingleUser(dbPool, email, passwordHash);
 
         return data;
       } catch (error) {
@@ -80,7 +61,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     {
       body: t.Object({
         email: t.String(),
-        password: t.String(),
+        passwordHash: t.String(),
       }),
     }
   );
