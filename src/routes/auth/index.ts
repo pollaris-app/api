@@ -4,8 +4,17 @@ import { api } from "../..";
 import {
   generatePasswordHash,
   generateVerificationCode,
-  generateVerificationToken,
+  generateToken,
 } from "../../libs/utils/generation";
+import {
+  checkIfPasswordResetExists,
+  createPasswordReset,
+} from "../../libs/drizzle/utils/password-resets";
+import { dbPool } from "../../libs/drizzle";
+import {
+  checkUserExists,
+  getUserIdByEmail,
+} from "../../libs/drizzle/utils/users";
 
 export const authRoutes = new Elysia({
   prefix: "/auth",
@@ -36,7 +45,7 @@ export const authRoutes = new Elysia({
 
         const passwordHash = await generatePasswordHash(password);
         const verificationCode = generateVerificationCode();
-        const verificationToken = generateVerificationToken();
+        const verificationToken = generateToken();
 
         const { error: userCreationError } = await api.v1.users.index.post({
           email,
@@ -81,4 +90,119 @@ export const authRoutes = new Elysia({
         password: t.String(),
       }),
     }
-  );
+  )
+  .group("/password-reset", (routes) => {
+    return routes
+      .post(
+        "/:email",
+        async ({ params: { email } }) => {
+          try {
+            const user = await checkUserExists(dbPool, email);
+
+            if (!user) {
+              throw new CustomError(404, "User does not exist");
+            }
+
+            const userId = await getUserIdByEmail(dbPool, email);
+            const resetToken = generateToken();
+
+            const { error: passwordResetEmailError } = await api.v1.emails[
+              "password-reset"
+            ].post({
+              email,
+              token: resetToken,
+            });
+
+            if (passwordResetEmailError) {
+              throw new CustomError(
+                Number(passwordResetEmailError.status),
+                String(passwordResetEmailError.value.message)
+              );
+            }
+
+            await createPasswordReset(dbPool, userId, resetToken);
+
+            return {
+              name: "Success",
+              message: "Password reset request completed successfully",
+            };
+          } catch (error) {
+            if (error instanceof CustomError) {
+              return handleError(error);
+            }
+          }
+        },
+        {
+          params: t.Object({
+            email: t.String({
+              format: "email",
+              default: "",
+              error: "Invalid email",
+            }),
+          }),
+        }
+      )
+      .post(
+        "/:email/:token",
+        async ({ params: { email, token }, body: { password } }) => {
+          try {
+            const user = await checkUserExists(dbPool, email);
+
+            if (!user) {
+              throw new CustomError(404, "User does not exist");
+            }
+
+            const userId = await getUserIdByEmail(dbPool, email);
+
+            const reset = await checkIfPasswordResetExists(
+              dbPool,
+              userId,
+              token
+            );
+
+            if (!reset) {
+              throw new CustomError(404, "Reset does not exist");
+            }
+
+            const passwordHash = await generatePasswordHash(password);
+
+            const { error: passwordUpdateError } = await api.v1.users
+              .password({
+                email: email,
+              })
+              .patch({
+                passwordHash,
+              });
+
+            if (passwordUpdateError) {
+              throw new CustomError(
+                Number(passwordUpdateError.status),
+                String(passwordUpdateError.value.message)
+              );
+            }
+
+            return {
+              name: "Success",
+              message: "Password updated successfully",
+            };
+          } catch (error) {
+            if (error instanceof CustomError) {
+              return handleError(error);
+            }
+          }
+        },
+        {
+          params: t.Object({
+            email: t.String({
+              format: "email",
+              default: "",
+              error: "Invalid email",
+            }),
+            token: t.String(),
+          }),
+          body: t.Object({
+            password: t.String(),
+          }),
+        }
+      );
+  });
