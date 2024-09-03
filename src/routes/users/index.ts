@@ -3,6 +3,7 @@ import { CustomError, handleError } from "../../libs/utils/error";
 import {
   checkUserExists,
   createSingleUser,
+  patchPasswordHash,
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
 
@@ -20,9 +21,16 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     "/:email",
     async ({ params: { email } }) => {
       try {
-        const data = await checkUserExists(dbPool, email);
+        const userExists = await checkUserExists(dbPool, email);
 
-        return data;
+        if (userExists) {
+          throw new CustomError(409, "Email is already in use");
+        }
+
+        return {
+          name: "Success",
+          message: "Email is available",
+        };
       } catch (error) {
         if (error instanceof CustomError) {
           return handleError(error);
@@ -61,6 +69,32 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     {
       body: t.Object({
         email: t.String(),
+        passwordHash: t.String(),
+      }),
+    }
+  )
+  .patch(
+    "/password/:email",
+    async ({ params: { email }, body: { passwordHash } }) => {
+      try {
+        const data = await patchPasswordHash(dbPool, email, passwordHash);
+
+        return data;
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return handleError(error);
+        }
+      }
+    },
+    {
+      params: t.Object({
+        email: t.String({
+          format: "email",
+          default: "",
+          error: "Invalid email",
+        }),
+      }),
+      body: t.Object({
         passwordHash: t.String(),
       }),
     }
