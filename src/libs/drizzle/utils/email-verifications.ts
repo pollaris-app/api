@@ -1,0 +1,50 @@
+import { and, eq } from "drizzle-orm";
+import { Database } from "../../../types";
+import { emailVerifications } from "../schemas";
+
+export const checkIfEmailVerificationExists = async (
+  db: Database,
+  userId: number,
+  token: string,
+  code: string
+) => {
+  const verification = await db
+    .select({
+      userId: emailVerifications.userId,
+      token: emailVerifications.token,
+      code: emailVerifications.code,
+    })
+    .from(emailVerifications)
+    .where(
+      and(
+        eq(emailVerifications.userId, userId),
+        eq(emailVerifications.token, token),
+        eq(emailVerifications.code, code)
+      )
+    );
+
+  return verification.length > 0;
+};
+
+export const validateEmailVerification = async (
+  db: Database,
+  userId: number,
+  token: string,
+  code: string
+) => {
+  const verification = await db
+    .select({
+      userId: emailVerifications.userId,
+      token: emailVerifications.token,
+    })
+    .from(emailVerifications)
+    .where(
+      and(
+        eq(emailVerifications.userId, userId),
+        eq(emailVerifications.token, token),
+        eq(emailVerifications.code, code)
+      )
+    );
+
+  return verification.length > 0;
+};
