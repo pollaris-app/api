@@ -15,6 +15,10 @@ import {
   checkUserExists,
   getUserIdByEmail,
 } from "../../libs/drizzle/utils/users";
+import {
+  checkIfEmailVerificationExists,
+  createEmailVerification,
+} from "../../libs/drizzle/utils/email-verifications";
 
 export const authRoutes = new Elysia({
   prefix: "/auth",
@@ -47,10 +51,11 @@ export const authRoutes = new Elysia({
         const verificationCode = generateVerificationCode();
         const verificationToken = generateToken();
 
-        const { error: userCreationError } = await api.v1.users.index.post({
-          email,
-          passwordHash,
-        });
+        const { data: userData, error: userCreationError } =
+          await api.v1.users.index.post({
+            email,
+            passwordHash,
+          });
 
         if (userCreationError) {
           throw new CustomError(
@@ -59,7 +64,20 @@ export const authRoutes = new Elysia({
           );
         }
 
-        const { error: emailVerificationError } = await api.v1.emails[
+        const userId = await getUserIdByEmail(dbPool, email);
+
+        const emailVerifications = await createEmailVerification(
+          dbPool,
+          userId,
+          verificationToken,
+          verificationCode
+        );
+
+        if (!emailVerifications) {
+          throw new CustomError(500, "Failed to create email verification");
+        }
+
+        const { error: emailVerificationEmailError } = await api.v1.emails[
           "email-verification"
         ].post({
           email,
@@ -67,10 +85,10 @@ export const authRoutes = new Elysia({
           code: verificationCode,
         });
 
-        if (emailVerificationError) {
+        if (emailVerificationEmailError) {
           throw new CustomError(
-            Number(emailVerificationError.status),
-            String(emailVerificationError.value.message)
+            Number(emailVerificationEmailError.status),
+            String(emailVerificationEmailError.value.message)
           );
         }
 
@@ -88,6 +106,69 @@ export const authRoutes = new Elysia({
       body: t.Object({
         email: t.String(),
         password: t.String(),
+      }),
+    }
+  )
+  .post(
+    "/email-verification/:email",
+    async ({ params: { email }, body: { code, token } }) => {
+      try {
+        const userExists = await checkUserExists(dbPool, email);
+
+        if (!userExists) {
+          throw new CustomError(404, "User does not exist");
+        }
+
+        const userId = await getUserIdByEmail(dbPool, email);
+
+        const verificationExists = await checkIfEmailVerificationExists(
+          dbPool,
+          userId,
+          token,
+          code
+        );
+
+        if (!verificationExists) {
+          throw new CustomError(
+            404,
+            "Verification does not exist or is invalid"
+          );
+        }
+
+        const { error: emailVerificationUpdateError } = await api.v1.users[
+          "email-verification"
+        ]({ email }).patch({
+          value: true,
+        });
+
+        if (emailVerificationUpdateError) {
+          throw new CustomError(
+            Number(emailVerificationUpdateError.status),
+            String(emailVerificationUpdateError.value.message)
+          );
+        }
+
+        return {
+          name: "Success",
+          message: "Email verified successfully",
+        };
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return handleError(error);
+        }
+      }
+    },
+    {
+      params: t.Object({
+        email: t.String({
+          format: "email",
+          default: "",
+          error: "Invalid email",
+        }),
+      }),
+      body: t.Object({
+        code: t.String(),
+        token: t.String(),
       }),
     }
   )
