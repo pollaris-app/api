@@ -3,6 +3,7 @@ import { CustomError, handleError } from "../../libs/utils/error";
 import {
   checkUserExists,
   createSingleUser,
+  patchEmailVerified,
   patchPasswordHash,
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
@@ -70,6 +71,32 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       body: t.Object({
         email: t.String(),
         passwordHash: t.String(),
+      }),
+    }
+  )
+  .patch(
+    "/email-verification/:email",
+    async ({ params: { email }, body: { value } }) => {
+      try {
+        const data = await patchEmailVerified(dbPool, email, value);
+
+        return data;
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return handleError(error);
+        }
+      }
+    },
+    {
+      params: t.Object({
+        email: t.String({
+          format: "email",
+          default: "",
+          error: "Invalid email",
+        }),
+      }),
+      body: t.Object({
+        value: t.Boolean(),
       }),
     }
   )
