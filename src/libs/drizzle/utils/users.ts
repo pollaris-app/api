@@ -44,6 +44,27 @@ export const createSingleUser = async (
   };
 };
 
+export const patchEmailVerified = async (
+  db: Database,
+  email: string,
+  value: boolean
+) => {
+  const data = await db
+    .update(users)
+    .set({ email_verified: value })
+    .where(eq(users.email, email));
+
+  if (data[0].affectedRows === 0) {
+    throw new CustomError(500, "Failed to update email verification");
+  }
+
+  return {
+    name: "Success",
+    message: "Email verification updated successfully",
+    data,
+  };
+};
+
 export const patchPasswordHash = async (
   db: Database,
   email: string,
