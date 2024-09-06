@@ -63,3 +63,15 @@ export const passwordResets = mysqlTable("password_resets", {
 
 export type PasswordResetsInsert = typeof passwordResets.$inferInsert;
 export type PasswordResetsSelect = typeof passwordResets.$inferSelect;
+
+export const sessions = mysqlTable("sessions", {
+  id: int("id").primaryKey().autoincrement(),
+  userId: int("user_id")
+    .references(() => users.id)
+    .notNull(),
+  expiresAt: date("expires_at").notNull(),
+  fresh: boolean("fresh").notNull().default(false),
+});
+
+export type SessionsInsert = typeof sessions.$inferInsert;
+export type SessionsSelect = typeof sessions.$inferSelect;
