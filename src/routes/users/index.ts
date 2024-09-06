@@ -48,12 +48,6 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
       }),
     }
   )
-  .onError(({ code, error }) => {
-    switch (code) {
-      case "CustomError":
-        return error;
-    }
-  })
   .post(
     "/",
     async ({ body: { email, passwordHash } }) => {
