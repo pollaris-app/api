@@ -69,6 +69,7 @@ export const sessions = mysqlTable("sessions", {
   userId: int("user_id")
     .references(() => users.id)
     .notNull(),
+  token: text("token").notNull(),
   expiresAt: date("expires_at").notNull(),
   fresh: boolean("fresh").notNull().default(false),
 });
