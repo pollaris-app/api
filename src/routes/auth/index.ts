@@ -5,6 +5,7 @@ import {
   generatePasswordHash,
   generateVerificationCode,
   generateToken,
+  verifyPasswordHash,
 } from "../../libs/utils/generation";
 import {
   checkIfPasswordResetExists,
@@ -12,7 +13,9 @@ import {
 } from "../../libs/drizzle/utils/password-resets";
 import { dbPool } from "../../libs/drizzle";
 import {
+  checkIfUserEmailVerified,
   checkUserExists,
+  getPasswordHashById,
   getUserIdByEmail,
 } from "../../libs/drizzle/utils/users";
 import {
@@ -106,6 +109,65 @@ export const authRoutes = new Elysia({
       body: t.Object({
         email: t.String(),
         password: t.String(),
+      }),
+    }
+  )
+  .post(
+    "/signin",
+    async ({ body: { email, password } }) => {
+      const userExists = await checkUserExists(dbPool, email);
+
+      if (!userExists) {
+        throw new CustomError(401, "Credentials incorrect");
+      }
+
+      const userId = await getUserIdByEmail(dbPool, email);
+
+      const passwordHash = await getPasswordHashById(dbPool, userId);
+
+      const passwordMatch = await verifyPasswordHash(password, passwordHash);
+
+      if (!passwordMatch) {
+        throw new CustomError(401, "Credentials incorrect");
+      }
+
+      const emailVerified = await checkIfUserEmailVerified(dbPool, email);
+
+      if (!emailVerified) {
+        throw new CustomError(401, "Email is not verified");
+      }
+
+      const { error: sessionCreationError } = await api.v1
+        .sessions({ userId })
+        .post();
+
+      if (sessionCreationError) {
+        throw new CustomError(
+          Number(sessionCreationError.status),
+          String(sessionCreationError.value.message)
+        );
+      }
+
+      // TODO: Implement cookie generation
+
+      return {
+        name: "Success",
+        message: "Signin completed successfully",
+      };
+    },
+    {
+      body: t.Object({
+        email: t.String({
+          format: "email",
+          default: "",
+          error: "Invalid email",
+        }),
+        password: t.String({
+          default: "",
+          error: "Invalid password",
+          minLength: 8,
+          maxLength: 64,
+        }),
       }),
     }
   )
