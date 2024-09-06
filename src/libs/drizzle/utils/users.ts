@@ -26,6 +26,17 @@ export const getUserIdByEmail = async (db: Database, email: string) => {
   return data[0].id;
 };
 
+export const checkIfUserEmailVerified = async (db: Database, email: string) => {
+  const data = await db
+    .select({
+      email_verified: users.email_verified,
+    })
+    .from(users)
+    .where(eq(users.email, email));
+
+  return data[0].email_verified;
+};
+
 export const createSingleUser = async (
   db: Database,
   email: string,
@@ -84,6 +95,17 @@ export const patchPasswordHash = async (
     message: "Password updated successfully",
     data,
   };
+};
+
+export const getPasswordHashById = async (db: Database, id: number) => {
+  const data = await db
+    .select({
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.id, id));
+
+  return data[0].passwordHash;
 };
 
 export const sendEmailVerificationEmail = async (

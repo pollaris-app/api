@@ -19,3 +19,9 @@ export const generatePasswordHash = async (password: string) => {
 
   return hash;
 };
+
+export const verifyPasswordHash = async (password: string, hash: string) => {
+  const result = await Bun.password.verify(password, hash);
+
+  return result;
+};
