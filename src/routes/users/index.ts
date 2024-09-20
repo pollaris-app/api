@@ -69,10 +69,10 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     }
   )
   .patch(
-    "/email-verification/:email",
-    async ({ params: { email }, body: { value } }) => {
+    "/email-verification/:id",
+    async ({ params: { id }, body: { value } }) => {
       try {
-        const data = await patchEmailVerified(dbPool, email, value);
+        const data = await patchEmailVerified(dbPool, id, value);
 
         return data;
       } catch (error) {
@@ -83,11 +83,7 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
     },
     {
       params: t.Object({
-        email: t.String({
-          format: "email",
-          default: "",
-          error: "Invalid email",
-        }),
+        id: t.Number(),
       }),
       body: t.Object({
         value: t.Boolean(),

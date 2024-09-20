@@ -5,20 +5,17 @@ import { CustomError } from "../../utils/error";
 
 export const checkIfEmailVerificationExists = async (
   db: Database,
-  userId: number,
   token: string,
   code: string
 ) => {
   const verification = await db
     .select({
-      userId: emailVerifications.userId,
       token: emailVerifications.token,
       code: emailVerifications.code,
     })
     .from(emailVerifications)
     .where(
       and(
-        eq(emailVerifications.userId, userId),
         eq(emailVerifications.token, token),
         eq(emailVerifications.code, code)
       )
@@ -69,4 +66,20 @@ export const createEmailVerification = async (
     message: "Email verification created successfully",
     data,
   };
+};
+
+export const getUserIdByEmailVerificationToken = async (
+  db: Database,
+  token: string
+) => {
+  const data = await db
+    .select({ userId: emailVerifications.userId })
+    .from(emailVerifications)
+    .where(eq(emailVerifications.token, token));
+
+  if (data.length === 0) {
+    throw new CustomError(404, "Email verification not found");
+  }
+
+  return data[0].userId;
 };

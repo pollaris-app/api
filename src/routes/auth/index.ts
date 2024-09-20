@@ -21,6 +21,7 @@ import {
 import {
   checkIfEmailVerificationExists,
   createEmailVerification,
+  getUserIdByEmailVerificationToken,
 } from "../../libs/drizzle/utils/email-verifications";
 
 export const authRoutes = new Elysia({
@@ -172,20 +173,11 @@ export const authRoutes = new Elysia({
     }
   )
   .post(
-    "/email-verification/:email",
-    async ({ params: { email }, body: { code, token } }) => {
+    "/email-verification/:token",
+    async ({ params: { token }, body: { code } }) => {
       try {
-        const userExists = await checkUserExists(dbPool, email);
-
-        if (!userExists) {
-          throw new CustomError(404, "User does not exist");
-        }
-
-        const userId = await getUserIdByEmail(dbPool, email);
-
         const verificationExists = await checkIfEmailVerificationExists(
           dbPool,
-          userId,
           token,
           code
         );
@@ -197,9 +189,11 @@ export const authRoutes = new Elysia({
           );
         }
 
+        const userId = await getUserIdByEmailVerificationToken(dbPool, token);
+
         const { error: emailVerificationUpdateError } = await api.v1.users[
           "email-verification"
-        ]({ email }).patch({
+        ]({ id: userId }).patch({
           value: true,
         });
 
@@ -222,15 +216,10 @@ export const authRoutes = new Elysia({
     },
     {
       params: t.Object({
-        email: t.String({
-          format: "email",
-          default: "",
-          error: "Invalid email",
-        }),
+        token: t.String(),
       }),
       body: t.Object({
         code: t.String(),
-        token: t.String(),
       }),
     }
   )
