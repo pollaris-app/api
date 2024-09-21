@@ -10,9 +10,14 @@ export const emailsRoutes = new Elysia({
 })
   .post(
     "/email-verification",
-    async ({ body: { email, token, code } }) => {
+    async ({ body: { email, token, code, userId } }) => {
       try {
-        const { data } = await sendEmailVerificationEmail(email, token, code);
+        const { data } = await sendEmailVerificationEmail(
+          email,
+          token,
+          code,
+          userId
+        );
 
         return data;
       } catch (error) {
@@ -26,6 +31,7 @@ export const emailsRoutes = new Elysia({
         email: t.String(),
         token: t.String(),
         code: t.String(),
+        userId: t.Number(),
       }),
     }
   )

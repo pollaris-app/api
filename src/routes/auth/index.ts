@@ -15,27 +15,21 @@ import { dbPool } from "../../libs/drizzle";
 import {
   checkIfUserEmailVerified,
   checkUserExists,
+  getEmailByUserId,
   getPasswordHashById,
   getUserIdByEmail,
 } from "../../libs/drizzle/utils/users";
 import {
   checkIfEmailVerificationExists,
+  checkIfEmailVerificationExistsByUserId,
   createEmailVerification,
   getUserIdByEmailVerificationToken,
+  removeEmailVerificationsForUser,
 } from "../../libs/drizzle/utils/email-verifications";
 
 export const authRoutes = new Elysia({
   prefix: "/auth",
 })
-  .error({
-    CustomError,
-  })
-  .onError(({ code, error }) => {
-    switch (code) {
-      case "CustomError":
-        return error.message;
-    }
-  })
   .post(
     "/signup",
     async ({ body: { email, password } }) => {
@@ -52,14 +46,11 @@ export const authRoutes = new Elysia({
         }
 
         const passwordHash = await generatePasswordHash(password);
-        const verificationCode = generateVerificationCode();
-        const verificationToken = generateToken();
 
-        const { data: userData, error: userCreationError } =
-          await api.v1.users.index.post({
-            email,
-            passwordHash,
-          });
+        const { error: userCreationError } = await api.v1.users.index.post({
+          email,
+          passwordHash,
+        });
 
         if (userCreationError) {
           throw new CustomError(
@@ -70,29 +61,17 @@ export const authRoutes = new Elysia({
 
         const userId = await getUserIdByEmail(dbPool, email);
 
-        const emailVerifications = await createEmailVerification(
-          dbPool,
-          userId,
-          verificationToken,
-          verificationCode
-        );
-
-        if (!emailVerifications) {
-          throw new CustomError(500, "Failed to create email verification");
-        }
-
-        const { error: emailVerificationEmailError } = await api.v1.emails[
+        const { error: emailVerificationError } = await api.v1.auth[
           "email-verification"
-        ].post({
+        ].index.post({
+          userId,
           email,
-          token: verificationToken,
-          code: verificationCode,
         });
 
-        if (emailVerificationEmailError) {
+        if (emailVerificationError) {
           throw new CustomError(
-            Number(emailVerificationEmailError.status),
-            String(emailVerificationEmailError.value.message)
+            Number(emailVerificationError.status),
+            String(emailVerificationError.value.message)
           );
         }
 
@@ -172,57 +151,135 @@ export const authRoutes = new Elysia({
       }),
     }
   )
-  .post(
-    "/email-verification/:token",
-    async ({ params: { token }, body: { code } }) => {
-      try {
-        const verificationExists = await checkIfEmailVerificationExists(
-          dbPool,
-          token,
-          code
-        );
+  .group("/email-verification", (routes) => {
+    return routes
+      .post(
+        "/",
+        async ({ body: { userId, email } }) => {
+          if (!email) {
+            email = await getEmailByUserId(dbPool, userId);
 
-        if (!verificationExists) {
-          throw new CustomError(
-            404,
-            "Verification does not exist or is invalid"
-          );
+            if (!email) {
+              throw new CustomError(404, "User does not exist");
+            }
+          }
+
+          const userVerified = await checkIfUserEmailVerified(dbPool, email);
+
+          if (userVerified) {
+            throw new CustomError(400, "Email is already verified");
+          }
+
+          try {
+            const verificationExists =
+              await checkIfEmailVerificationExistsByUserId(dbPool, userId);
+
+            if (verificationExists) {
+              await removeEmailVerificationsForUser(dbPool, userId);
+            }
+
+            const verificationCode = generateVerificationCode();
+            const verificationToken = generateToken();
+
+            const emailVerifications = await createEmailVerification(
+              dbPool,
+              userId,
+              verificationToken,
+              verificationCode
+            );
+
+            if (!emailVerifications) {
+              throw new CustomError(500, "Failed to create email verification");
+            }
+
+            const { error: emailVerificationEmailError } = await api.v1.emails[
+              "email-verification"
+            ].post({
+              email,
+              token: verificationToken,
+              code: verificationCode,
+              userId,
+            });
+
+            if (emailVerificationEmailError) {
+              throw new CustomError(
+                Number(emailVerificationEmailError.status),
+                String(emailVerificationEmailError.value.message)
+              );
+            }
+
+            return {
+              name: "Success",
+              message: "Email verification request created successfully",
+            };
+          } catch (error) {
+            if (error instanceof CustomError) {
+              return handleError(error);
+            }
+          }
+        },
+        {
+          body: t.Object({
+            userId: t.Number(),
+            email: t.Optional(t.String()),
+          }),
         }
+      )
+      .post(
+        "/:token",
+        async ({ params: { token }, body: { code } }) => {
+          try {
+            const verificationExists = await checkIfEmailVerificationExists(
+              dbPool,
+              token,
+              code
+            );
 
-        const userId = await getUserIdByEmailVerificationToken(dbPool, token);
+            if (!verificationExists) {
+              throw new CustomError(
+                404,
+                "Verification does not exist or is invalid"
+              );
+            }
 
-        const { error: emailVerificationUpdateError } = await api.v1.users[
-          "email-verification"
-        ]({ id: userId }).patch({
-          value: true,
-        });
+            const userId = await getUserIdByEmailVerificationToken(
+              dbPool,
+              token
+            );
 
-        if (emailVerificationUpdateError) {
-          throw new CustomError(
-            Number(emailVerificationUpdateError.status),
-            String(emailVerificationUpdateError.value.message)
-          );
+            const { error: emailVerificationUpdateError } = await api.v1.users[
+              "email-verification"
+            ]({ id: userId }).patch({
+              value: true,
+            });
+
+            if (emailVerificationUpdateError) {
+              throw new CustomError(
+                Number(emailVerificationUpdateError.status),
+                String(emailVerificationUpdateError.value.message)
+              );
+            }
+
+            return {
+              name: "Success",
+              message: "Email verified successfully",
+            };
+          } catch (error) {
+            if (error instanceof CustomError) {
+              return handleError(error);
+            }
+          }
+        },
+        {
+          params: t.Object({
+            token: t.String(),
+          }),
+          body: t.Object({
+            code: t.String(),
+          }),
         }
-
-        return {
-          name: "Success",
-          message: "Email verified successfully",
-        };
-      } catch (error) {
-        if (error instanceof CustomError) {
-          return handleError(error);
-        }
-      }
-    },
-    {
-      params: t.Object({
-        token: t.String(),
-      }),
-      body: t.Object({
-        code: t.String(),
-      }),
-    }
-  )
+      );
+  })
   .group("/password-reset", (routes) => {
     return routes
       .post(

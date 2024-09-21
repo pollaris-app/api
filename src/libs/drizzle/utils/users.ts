@@ -26,6 +26,17 @@ export const getUserIdByEmail = async (db: Database, email: string) => {
   return data[0].id;
 };
 
+export const getEmailByUserId = async (db: Database, userId: number) => {
+  const data = await db
+    .select({
+      email: users.email,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  return data[0].email;
+};
+
 export const checkIfUserEmailVerified = async (db: Database, email: string) => {
   const data = await db
     .select({
@@ -111,7 +122,8 @@ export const getPasswordHashById = async (db: Database, id: number) => {
 export const sendEmailVerificationEmail = async (
   email: string,
   token: string,
-  code: string
+  code: string,
+  userId: number
 ) => {
   const resend = new Resend(Bun.env.RESEND_API_KEY);
 
@@ -121,7 +133,7 @@ export const sendEmailVerificationEmail = async (
     subject: "Quizzly - Account Verification",
     html: `
       <p>${code}</p>
-      <a href="http://${Bun.env.HOST}/auth/email-verification/${token}?email=${email}">Verify</a>
+      <a href="http://${Bun.env.DOMAIN}/auth/email-verification/${userId}/${token}">Verify</a>
     `,
   });
 
@@ -144,7 +156,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     to: [email],
     subject: "Quizzly - Password Reset",
     html: `
-      <a href="http://${Bun.env.HOST}/auth/password-reset/${token}">Reset</a>
+      <a href="http://${Bun.env.DOMAIN}/auth/password-reset/${token}">Reset</a>
     `,
   });
 

@@ -24,6 +24,20 @@ export const checkIfEmailVerificationExists = async (
   return verification.length > 0;
 };
 
+export const checkIfEmailVerificationExistsByUserId = async (
+  db: Database,
+  userId: number
+) => {
+  const verification = await db
+    .select({
+      userId: emailVerifications.userId,
+    })
+    .from(emailVerifications)
+    .where(eq(emailVerifications.userId, userId));
+
+  return verification.length > 0;
+};
+
 export const validateEmailVerification = async (
   db: Database,
   userId: number,
@@ -65,6 +79,24 @@ export const createEmailVerification = async (
     name: "Success",
     message: "Email verification created successfully",
     data,
+  };
+};
+
+export const removeEmailVerificationsForUser = async (
+  db: Database,
+  userId: number
+) => {
+  const data = await db
+    .delete(emailVerifications)
+    .where(eq(emailVerifications.userId, userId));
+
+  if (data[0].affectedRows === 0) {
+    throw new CustomError(404, "Email verification not found");
+  }
+
+  return {
+    name: "Success",
+    message: "Email verification removed successfully",
   };
 };
 
