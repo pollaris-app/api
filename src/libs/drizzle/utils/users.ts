@@ -121,7 +121,7 @@ export const sendEmailVerificationEmail = async (
     subject: "Quizzly - Account Verification",
     html: `
       <p>${code}</p>
-      <a href="http://${Bun.env.HOST}/auth/email-verification/${token}">Verify</a>
+      <a href="http://${Bun.env.HOST}/auth/email-verification/${token}?email=${email}">Verify</a>
     `,
   });
 
