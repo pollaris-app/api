@@ -37,6 +37,22 @@ export const getEmailByUserId = async (db: Database, userId: number) => {
   return data[0].email;
 };
 
+export const getUserByUserId = async (db: Database, userId: number) => {
+  const data = await db
+    .select({
+      email: users.email,
+      email_verified: users.email_verified,
+    })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (data.length === 0) {
+    throw new CustomError(404, "User not found");
+  }
+
+  return data[0];
+};
+
 export const checkIfUserEmailVerified = async (db: Database, email: string) => {
   const data = await db
     .select({
@@ -148,7 +164,11 @@ export const sendEmailVerificationEmail = async (
   };
 };
 
-export const sendPasswordResetEmail = async (email: string, token: string) => {
+export const sendPasswordResetEmail = async (
+  email: string,
+  userId: number,
+  token: string
+) => {
   const resend = new Resend(Bun.env.RESEND_API_KEY);
 
   const { data, error } = await resend.emails.send({
@@ -156,7 +176,7 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     to: [email],
     subject: "Quizzly - Password Reset",
     html: `
-      <a href="http://${Bun.env.DOMAIN}/auth/password-reset/${token}">Reset</a>
+      <a href="http://${Bun.env.DOMAIN}/auth/password-reset/${userId}/${token}">Reset</a>
     `,
   });
 

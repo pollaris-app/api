@@ -9,7 +9,9 @@ import {
 } from "../../libs/utils/generation";
 import {
   checkIfPasswordResetExists,
+  checkIfPasswordResetsExistsByUserId,
   createPasswordReset,
+  removePasswordResetsForUser,
 } from "../../libs/drizzle/utils/password-resets";
 import { dbPool } from "../../libs/drizzle";
 import {
@@ -61,12 +63,11 @@ export const authRoutes = new Elysia({
 
         const userId = await getUserIdByEmail(dbPool, email);
 
-        const { error: emailVerificationError } = await api.v1.auth[
-          "email-verification"
-        ].index.post({
-          userId,
-          email,
-        });
+        const { data: emailVerificationData, error: emailVerificationError } =
+          await api.v1.auth["email-verification"].index.post({
+            userId,
+            email,
+          });
 
         if (emailVerificationError) {
           throw new CustomError(
@@ -78,6 +79,10 @@ export const authRoutes = new Elysia({
         return {
           name: "Success",
           message: "Signup completed successfully",
+          data: {
+            userId,
+            token: emailVerificationData?.data.token,
+          },
         };
       } catch (error) {
         if (error instanceof CustomError) {
@@ -156,21 +161,21 @@ export const authRoutes = new Elysia({
       .post(
         "/",
         async ({ body: { userId, email } }) => {
-          if (!email) {
-            email = await getEmailByUserId(dbPool, userId);
-
-            if (!email) {
-              throw new CustomError(404, "User does not exist");
-            }
-          }
-
-          const userVerified = await checkIfUserEmailVerified(dbPool, email);
-
-          if (userVerified) {
-            throw new CustomError(400, "Email is already verified");
-          }
-
           try {
+            if (!email) {
+              email = await getEmailByUserId(dbPool, userId);
+
+              if (!email) {
+                throw new CustomError(404, "User does not exist");
+              }
+            }
+
+            const userVerified = await checkIfUserEmailVerified(dbPool, email);
+
+            if (userVerified) {
+              throw new CustomError(400, "Email is already verified");
+            }
+
             const verificationExists =
               await checkIfEmailVerificationExistsByUserId(dbPool, userId);
 
@@ -211,6 +216,10 @@ export const authRoutes = new Elysia({
             return {
               name: "Success",
               message: "Email verification request created successfully",
+              data: {
+                token: verificationToken,
+                userId,
+              },
             };
           } catch (error) {
             if (error instanceof CustomError) {
@@ -283,8 +292,8 @@ export const authRoutes = new Elysia({
   .group("/password-reset", (routes) => {
     return routes
       .post(
-        "/:email",
-        async ({ params: { email } }) => {
+        "/",
+        async ({ body: { email } }) => {
           try {
             const user = await checkUserExists(dbPool, email);
 
@@ -293,12 +302,21 @@ export const authRoutes = new Elysia({
             }
 
             const userId = await getUserIdByEmail(dbPool, email);
+
+            const resetRequestExists =
+              await checkIfPasswordResetsExistsByUserId(dbPool, userId);
+
+            if (resetRequestExists) {
+              await removePasswordResetsForUser(dbPool, userId);
+            }
+
             const resetToken = generateToken();
 
             const { error: passwordResetEmailError } = await api.v1.emails[
               "password-reset"
             ].post({
               email,
+              userId,
               token: resetToken,
             });
 
@@ -313,7 +331,7 @@ export const authRoutes = new Elysia({
 
             return {
               name: "Success",
-              message: "Password reset request completed successfully",
+              message: "Password reset request created successfully",
             };
           } catch (error) {
             if (error instanceof CustomError) {
@@ -322,7 +340,7 @@ export const authRoutes = new Elysia({
           }
         },
         {
-          params: t.Object({
+          body: t.Object({
             email: t.String({
               format: "email",
               default: "",
@@ -332,17 +350,14 @@ export const authRoutes = new Elysia({
         }
       )
       .post(
-        "/:email/:token",
-        async ({ params: { email, token }, body: { password } }) => {
+        "/:userId/:token",
+        async ({ params: { userId, token }, body: { password } }) => {
           try {
-            const user = await checkUserExists(dbPool, email);
+            const email = await getEmailByUserId(dbPool, userId);
 
-            if (!user) {
+            if (!email) {
               throw new CustomError(404, "User does not exist");
             }
-
-            const userId = await getUserIdByEmail(dbPool, email);
-
             const reset = await checkIfPasswordResetExists(
               dbPool,
               userId,
@@ -370,6 +385,8 @@ export const authRoutes = new Elysia({
               );
             }
 
+            await removePasswordResetsForUser(dbPool, userId);
+
             return {
               name: "Success",
               message: "Password updated successfully",
@@ -382,11 +399,7 @@ export const authRoutes = new Elysia({
         },
         {
           params: t.Object({
-            email: t.String({
-              format: "email",
-              default: "",
-              error: "Invalid email",
-            }),
+            userId: t.Number(),
             token: t.String(),
           }),
           body: t.Object({
@@ -394,4 +407,6 @@ export const authRoutes = new Elysia({
           }),
         }
       );
+    // TODO: Add a route to remove password reset requests
+    // Also add the ability to pass certain parameters to the route to remove specific requests that would otherwise would be called twice
   });

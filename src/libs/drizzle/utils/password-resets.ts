@@ -19,6 +19,39 @@ export const checkIfPasswordResetExists = async (
   return reset.length > 0;
 };
 
+export const checkIfPasswordResetsExistsByUserId = async (
+  db: Database,
+  userId: number
+) => {
+  const reset = await db
+    .select({
+      userId: passwordResets.userId,
+      token: passwordResets.token,
+    })
+    .from(passwordResets)
+    .where(eq(passwordResets.userId, userId));
+
+  return reset.length > 0;
+};
+
+export const removePasswordResetsForUser = async (
+  db: Database,
+  userId: number
+) => {
+  const data = await db
+    .delete(passwordResets)
+    .where(eq(passwordResets.userId, userId));
+
+  if (data[0].affectedRows === 0) {
+    throw new CustomError(500, "Failed to remove password resets");
+  }
+
+  return {
+    name: "Success",
+    message: "Password resets removed successfully",
+  };
+};
+
 export const createPasswordReset = async (
   db: Database,
   userId: number,

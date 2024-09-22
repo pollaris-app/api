@@ -3,21 +3,14 @@ import { CustomError, handleError } from "../../libs/utils/error";
 import {
   checkUserExists,
   createSingleUser,
+  getUserByUserId,
   patchEmailVerified,
   patchPasswordHash,
 } from "../../libs/drizzle/utils/users";
 import { dbPool } from "../../libs/drizzle";
 
 export const usersRoutes = new Elysia({ prefix: "/users" })
-  .error({
-    CustomError,
-  })
-  .onError(({ code, error }) => {
-    switch (code) {
-      case "CustomError":
-        return error;
-    }
-  })
+
   .get(
     "/:email",
     async ({ params: { email } }) => {
@@ -45,6 +38,29 @@ export const usersRoutes = new Elysia({ prefix: "/users" })
           default: "",
           error: "Invalid email",
         }),
+      }),
+    }
+  )
+  .get(
+    "/id/:id",
+    async ({ params: { id } }) => {
+      try {
+        const user = await getUserByUserId(dbPool, id);
+
+        return {
+          name: "Success",
+          message: "User found",
+          data: user,
+        };
+      } catch (error) {
+        if (error instanceof CustomError) {
+          return handleError(error);
+        }
+      }
+    },
+    {
+      params: t.Object({
+        id: t.Number(),
       }),
     }
   )

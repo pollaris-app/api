@@ -37,9 +37,9 @@ export const emailsRoutes = new Elysia({
   )
   .post(
     "/password-reset",
-    async ({ body: { email, token } }) => {
+    async ({ body: { email, userId, token } }) => {
       try {
-        const { data } = await sendPasswordResetEmail(email, token);
+        const { data } = await sendPasswordResetEmail(email, userId, token);
 
         return data;
       } catch (error) {
@@ -51,6 +51,7 @@ export const emailsRoutes = new Elysia({
     {
       body: t.Object({
         email: t.String(),
+        userId: t.Number(),
         token: t.String(),
       }),
     }
